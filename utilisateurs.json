@@ -1,0 +1,18 @@
+{
+  "users": [
+    {
+      "username": "user1",
+      "group": "devs",
+      "ip": "192.168.1.10",
+      "public_key": "ssh-rsa AAAAB3NzaC1yc2E... user1@host",
+      "home_quota_gb": 50
+    },
+    {
+      "username": "user2",
+      "group": "devs",
+      "ip": "192.168.1.11",
+      "public_key": "ssh-rsa AAAAB3NzaC1yc2E... user2@host",
+      "home_quota_gb": 100
+    }
+  ]
+}
