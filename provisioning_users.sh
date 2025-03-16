@@ -89,7 +89,7 @@ add_user () {
 # paramètres :"$username" "$group" "$public_key" "$quota"
 #-----------------
 conf_SSH () {
-
+    return 0
 }
 
 #-----------------
