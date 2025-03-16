@@ -1,5 +1,7 @@
 #!/bin/bash
 # This script create accounts for users decribes in a JSON file
+# It create new accounts for users, add them in group, configure SSH access with
+# an autorized IP and an only key access. It also attribute a maximum space for home directory (Gb)
 # JSON format:
 #    {
 #    "users": [
@@ -26,10 +28,8 @@
 # Affiche l'aide du script
 #-----------------
 
-show_help (){
-    echo "Le script $0 nécessite des options"
-    echo "$0 -f <fichier .json> [-v] [-h]"
-    exit 0
+show_help () {
+    cat ./help.me
 }
 
 #-----------------
@@ -41,7 +41,7 @@ verbeux=false
 
 while getopts ":f:vh" option
 do
-    echo "getopts a trouvé l'option $option"
+#    echo "getopts a trouvé l'option $option"
     case $option in
         f)  fichier="$OPTARG"
             ;;
@@ -50,9 +50,12 @@ do
         :)  echo "l'option $OPTARG requiert un nom de fichier en argument"
             exit 0
             ;;
-        h)  show_help()
+        h)  show_help
+            exit 0
             ;;
-        ?)  show_help()
+        ?)  echo "L'option $OPTARG est invalide"
+            show_help
+            exit 1
             ;;
         \?) echo "L'option $OPTARG est invalide"
             exit 1
@@ -61,8 +64,12 @@ do
 done
 
 if [ -f "$fichier" ]; then
+    echo "Le fichier contient: "
     cat "$fichier"
-else
+elif [ "$fichier" = '' ]; then
+    echo "Erreur : Vous devez indiquer un nom de fichier valide en argument -f"
+    exit 1
+else    
     echo "Erreur : Le fichier '$fichier' n'existe pas."
     exit 1
 fi
