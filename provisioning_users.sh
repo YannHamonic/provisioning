@@ -48,7 +48,7 @@ do
         v)  verbeux=true
             ;;
         :)  echo "l'option $OPTARG requiert un nom de fichier en argument"
-            exit 0
+            exit 1
             ;;
         h)  show_help
             exit 0
@@ -79,32 +79,5 @@ if [ "$verbeux" = true ]; then
     echo "Lecture du fichier : $fichier"
 fi
 
-
-
-#-----------------
-# check_file
-#-----------------
-# vérifier que le fichier existe et qu'il est bien au format json
-# si le fichier n'est pas acceptable (check du json, des paramètres attendus) :
-#   echo 'paramètres invalide' 
-#   show_help())
-# else return true
-
-#-----------------
-# add_user
-#-----------------
-# si le groupe n'existe pas :
-#   - créer le groupe
-# si l'utilisateur n'existe pas
-#   - on ajoute l'utilisateur dans son groupe
-#   - spécifier la taille (max?) de son /home
-#
-#-----------------
-# add_ssh_access
-#-----------------
-# modifier la configuration ssh pour y ajouter :
-#   - l'utilisateur
-#   - la clef publique
-#   - le mode de connexion (ssh-key only)
-#   - l'ip de connexion authorisée 
+exit 0
 
