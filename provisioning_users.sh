@@ -1,4 +1,36 @@
 #!/bin/bash
+# This script create accounts for users decribes in a JSON file
+# JSON format:
+#    {
+#    "users": [
+#        {
+#        "username": "user1",
+#        "group": "devs",
+#        "ip": "192.168.1.10",
+#        "public_key": "ssh-rsa AAAAB3NzaC1yc2E... user1@host",
+#        "home_quota_gb": 50
+#        },
+#        {
+#        "username": "user2",
+#        "group": "devs",
+#        "ip": "192.168.1.11",
+#        "public_key": "ssh-rsa AAAAB3NzaC1yc2E... user2@host",
+#        "home_quota_gb": 100
+#        }
+#    ]
+#    }
+# Usage: ./provisioning_users.sh users.json
+
+#-----------------
+# show_help
+# Affiche l'aide du script
+#-----------------
+
+show_help (){
+    echo "Le script $0 nécessite des options"
+    echo "$0 -f <fichier .json> [-v] [-h]"
+    exit 0
+}
 
 #-----------------
 # Main
@@ -18,7 +50,7 @@ do
         :)  echo "l'option $OPTARG requiert un nom de fichier en argument"
             exit 0
             ;;
-        h)  show_help
+        h)  show_help()
             ;;
         ?)  show_help()
             ;;
@@ -40,16 +72,7 @@ if [ "$verbeux" = true ]; then
     echo "Lecture du fichier : $fichier"
 fi
 
-#-----------------
-# show_help
-#-----------------
-# Affichage d'aide du script
-# break du script
-show_help(){
-    echo "Le script $0 nécessite des options"
-    echo "$0 -f <fichier .json> [-v] [-h]"
-    exit 0
-}
+
 
 #-----------------
 # check_file
