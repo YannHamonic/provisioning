@@ -34,8 +34,9 @@ show_help () {
 
 #-----------------
 # check_bin
-# Vérifie que les binaires essentiels sont présent
+# Vérifie que les binaires et librairies essentiels sont présent
 #   - jq
+#   - libuser
 #-----------------
 check_bin () {
     if [ ! -f /usr/bin/jq ]; then
@@ -43,6 +44,13 @@ check_bin () {
         echo "  Vous pourvez installer jq avec APT: sudo apt install jq"
         exit 1
     fi
+    if [ ! -f /usr/bin/useradd ]; then
+        echo "Erreur: La librairie libuser est nécessaire pour administrer les"
+        echo "utilisateurs et les groupes"
+        echo "  Vous pourvez installer libuser avec APT: sudo apt install libuser"
+        exit 1
+    fi
+    return 0
 }
 
 #-----------------
