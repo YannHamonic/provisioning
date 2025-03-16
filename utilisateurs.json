@@ -1,17 +1,17 @@
 {
   "users": [
     {
-      "username": "user1",
+      "username": "yann",
       "group": "devs",
       "ip": "192.168.1.10",
-      "public_key": "ssh-rsa AAAAB3NzaC1yc2E... user1@host",
+      "public_key": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBDIA/wzeamzAIf2ZwQ1fZgFzkfqqDaOL2jx6wSF1vlRPLIAC7vAhW1byZBH4l2jCN5+ixAvGvP+IvZ+Py/QRXC8=",
       "home_quota_gb": 50
     },
     {
       "username": "user2",
       "group": "devs",
       "ip": "192.168.1.11",
-      "public_key": "ssh-rsa AAAAB3NzaC1yc2E... user2@host",
+      "public_key": "ssh-rsaAAAAB3NzaC1yc2Euser2host",
       "home_quota_gb": 100
     }
   ]

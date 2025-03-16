@@ -33,11 +33,74 @@ show_help () {
 }
 
 #-----------------
+# check_bin
+# Vérifie que les binaires essentiels sont présent
+#   - jq
+#-----------------
+check_bin () {
+    if [ ! -f /usr/bin/jq ]; then
+        echo "Erreur: Le binaire jq est nécessaire pour importer le fichier JSON"
+        echo "  Vous pourvez installer jq avec APT: sudo apt install jq"
+        exit 1
+    fi
+}
+
+#-----------------
+# import_json
+# Importer le contenu du fichier json dans une variable USERS
+#-----------------
+import_json () {
+    echo "$1" | jq .
+    USERS=$(jq -c '.users' "$1")
+    return 0
+}
+
+#-----------------
+# add_user
+# Ajout de l'utlisateur avec ses caractéristiques
+# paramètres :"$username" "$group" "$public_key" "$quota"
+#-----------------
+add_user () {
+    # Création de l'utlisateur (basics)
+    groupadd -f "$2" # -f (Force) : fini avec succès, même si le groupe existe déjà
+    useradd -m -d "/home/$1" -g "$2" "$1" # Création du home, affectation dans le groupe et ajout de l'utilisateur
+    # Ajout d'un quota sur son home
+    setquota -u "$1" 0 "$4" 0 0 / # A décrire
+
+    # Ajout de la clef SSH
+    mkdir -p "/home/$1/.ssh" # -p : fini avec succès, même si le répertoire existe déjà
+    echo $3 >> "/home/$1/.ssh/authorized_keys"
+
+    # Modification de propiétaire sur le home
+    chown  -R "$1:$2" "/home/$1"
+    # Modification des droits sur
+    #   - le repertoire .ssh
+    chmod 700 "/home/$1/.ssh"
+    #   - le fichier des clefs autorisées
+    chmod 600 "/home/$1/.ssh/authorized_keys"
+
+    return O
+}
+
+#-----------------
+# conf_SSH
+# Configuration du service SSH
+# Ouverture du port 22 dans le FW
+# paramètres :"$username" "$group" "$public_key" "$quota"
+#-----------------
+conf_SSH () {
+
+}
+
+#-----------------
 # Main
 #-----------------
 
 fichier=""
-verbeux=false
+VERBOSE=false
+
+# Vérification de la présence des binaires nécessaires
+check_bin
 
 while getopts ":f:vh" option
 do
@@ -45,7 +108,7 @@ do
     case $option in
         f)  fichier="$OPTARG"
             ;;
-        v)  verbeux=true
+        v)  VERBOSE=true
             ;;
         :)  echo "l'option $OPTARG requiert un nom de fichier en argument"
             exit 1
@@ -63,9 +126,8 @@ do
     esac
 done
 
-if [ -f "$fichier" ]; then
-    echo "Le fichier contient: "
-    cat "$fichier"
+if [ -s "$fichier" ]; then
+    import_json $fichier
 elif [ "$fichier" = '' ]; then
     echo "Erreur : Vous devez indiquer un nom de fichier valide en argument -f"
     exit 1
@@ -74,10 +136,22 @@ else
     exit 1
 fi
 
-if [ "$verbeux" = true ]; then
+if [ "$VERBOSE" = true ]; then
     echo "Mode verbeux activé."
     echo "Lecture du fichier : $fichier"
 fi
+
+echo "$USERS" | jq -c '.[]' | while read -r user; do
+    username=$(echo "$user" | jq -r '.username')
+    group=$(echo "$user" | jq -r '.group')
+    public_key=$(echo "$user" | jq -r '.public_key')
+    quota=$(echo "$user" | jq -r '.home_quota_gb')
+
+    add_user "$username" "$group" "$public_key" "$quota"
+
+# Configurer le service SSH + ouvrir le port 22 dans le FW
+# Eventuellement à faire avant l'ajout des utilisateurs pour que l'on puisse autoriser les IP's à la lecture de celles-ci
+# conf_SSH
 
 exit 0
 
