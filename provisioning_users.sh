@@ -41,13 +41,13 @@ show_help () {
 check_bin () {
     if [ ! -f /usr/bin/jq ]; then
         echo "Erreur: Le binaire jq est nécessaire pour importer le fichier JSON"
-        echo "  Vous pourvez installer jq avec APT: sudo apt install jq"
+        echo "  Vous pouvez installer jq avec APT: sudo apt install jq"
         exit 1
     fi
-    if [ ! -f /usr/bin/useradd ]; then
+    if [ ! -f /usr/sbin/useradd ]; then
         echo "Erreur: La librairie libuser est nécessaire pour administrer les"
         echo "utilisateurs et les groupes"
-        echo "  Vous pourvez installer libuser avec APT: sudo apt install libuser"
+        echo "  Vous pouvez installer libuser avec APT: sudo apt install libuser"
         exit 1
     fi
     return 0
