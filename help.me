@@ -3,10 +3,11 @@ Aide sur l'usage du script provisioning_users.sh
 ------------------------------------------------
 Ce script créer automatiquement des comptes sur ce poste à partir d'un fichier
 JSON contenant les caractéristiques des utilisateurs à provisionner.
-Les nouveaux utilisateurs pourront accéder à leur compte avec une connexion SSHIt create new accounts for users, add them in group, configure SSH access with
-# an autorized IP and an only key access. It also attribute a maximum space for home directory (Gb)
-Le script provisioning_users.sh nécessite des options
-Usage : ./provisioning_users.sh -f <users.json> [-v] [-h]
+Les nouveaux utilisateurs pourront accéder à leur compte avec une connexion SSH
+et uniquement depuis une IP liée à leur compte.
+La taille du répertoire home des utilisateurs est soumis à un système de quota.
+
+Usage : sudo ./provisioning_users.sh -f <users.json> [-v] [-h]
 
 -f <users.json>
   Créer les utlisateurs présents dans le fichier JSON au format :

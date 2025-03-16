@@ -21,7 +21,7 @@
 #        }
 #    ]
 #    }
-# Usage: ./provisioning_users.sh users.json
+# Usage: sudo ./provisioning_users.sh users.json
 
 #-----------------
 # show_help
@@ -37,17 +37,32 @@ show_help () {
 # Vérifie que les binaires et librairies essentiels sont présent
 #   - jq
 #   - libuser
+#   - quota et quotatool
 #-----------------
 check_bin () {
+    local check=False
     if [ ! -f /usr/bin/jq ]; then
         echo "Erreur: Le binaire jq est nécessaire pour importer le fichier JSON"
         echo "  Vous pouvez installer jq avec APT: sudo apt install jq"
-        exit 1
+        echo ""
+        check=True
     fi
     if [ ! -f /usr/sbin/useradd ]; then
         echo "Erreur: La librairie libuser est nécessaire pour administrer les"
         echo "utilisateurs et les groupes"
         echo "  Vous pouvez installer libuser avec APT: sudo apt install libuser"
+        echo ""
+        check=True
+    fi
+    if [ ! -f /usr/sbin/setquota ]; then
+        echo "Erreur: Les librairies quota et quotatool sont nécessaires pour"
+        echo "gérer les quotas des utilisateurs"
+        echo "  Vous pouvez installer quota et quotatool avec APT:"
+        echo "  sudo apt install quota quotatool"
+        echo ""
+        check=True
+    fi
+    if [ $check ]; then
         exit 1
     fi
     return 0
@@ -87,7 +102,7 @@ add_user () {
     #   - le fichier des clefs autorisées
     chmod 600 "/home/$1/.ssh/authorized_keys"
 
-    return O
+    return 0
 }
 
 #-----------------
@@ -106,6 +121,12 @@ conf_SSH () {
 
 fichier=""
 VERBOSE=false
+
+# Le script doit être exécuté en root (sudo)
+if [ ! $(whoami) = 'root' ]; then
+    echo "Ce script doit être exécuté avec des droits root"
+    exit 0
+fi
 
 # Vérification de la présence des binaires nécessaires
 check_bin
@@ -133,6 +154,8 @@ do
             ;;
     esac
 done
+
+# CONFIGURATION DU SYSTEM DE QUOTA ....  SYSTEME DE DISQUE ? RELOAD DE LA MACHINE ?
 
 if [ -s "$fichier" ]; then
     import_json $fichier
