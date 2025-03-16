@@ -148,10 +148,10 @@ echo "$USERS" | jq -c '.[]' | while read -r user; do
     quota=$(echo "$user" | jq -r '.home_quota_gb')
 
     add_user "$username" "$group" "$public_key" "$quota"
+done
 
 # Configurer le service SSH + ouvrir le port 22 dans le FW
 # Eventuellement à faire avant l'ajout des utilisateurs pour que l'on puisse autoriser les IP's à la lecture de celles-ci
 # conf_SSH
 
 exit 0
-
