@@ -196,7 +196,7 @@ conf_quota () {
 
     # Activation des quotas
     echo "Activation des quotas..."
-    quotaon -v /
+    quotaon /
 
     # Vérification de l'état des quotas
     if quotaon -p / 2>/dev/null | grep -q "is on"; then
