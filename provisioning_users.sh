@@ -40,29 +40,43 @@ show_help () {
 #   - quota et quotatool
 #-----------------
 check_bin () {
-    local check=False
+    local check=false
+    # Vérifier si le paquet jq pour importer des JSON est installé
     if [ ! -f /usr/bin/jq ]; then
         echo "Erreur: Le binaire jq est nécessaire pour importer le fichier JSON"
         echo "  Vous pouvez installer jq avec APT: sudo apt install jq"
-        echo ""
-        check=True
+        echo " "
+        check=true
     fi
+    # Vérifier si le paquet libuser de gestion utilisateur est installé
     if [ ! -f /usr/sbin/useradd ]; then
         echo "Erreur: La librairie libuser est nécessaire pour administrer les"
         echo "utilisateurs et les groupes"
-        echo "  Vous pouvez installer libuser avec APT: sudo apt install libuser"
-        echo ""
-        check=True
+        echo "  Vous pouvez installer libuser avec APT:"
+        echo "  sudo apt install libuser"
+        echo " "
+        check=true
     fi
+    # Vérifier si les paquets de gestion de quotas sont installés
     if [ ! -f /usr/sbin/setquota ]; then
         echo "Erreur: Les librairies quota et quotatool sont nécessaires pour"
         echo "gérer les quotas des utilisateurs"
         echo "  Vous pouvez installer quota et quotatool avec APT:"
         echo "  sudo apt install quota quotatool"
-        echo ""
-        check=True
+        echo " "
+        check=true
     fi
-    if [ $check ]; then
+    # Vérifier si OpenSSH est installé
+    if ! command -v sshd > /dev/null 2>&1; then
+        echo "Erreur: OpenSSH n'est pas installé."
+        echo "  Vous devez installer openSSH avec APT:"
+        echo "  sudo apt install openssh-server"
+        echo " "
+        check=true
+    fi
+    if $check; then
+        echo "Erreur durant la vérification des pré-requis"
+        echo ""
         exit 1
     fi
     return 0
@@ -77,41 +91,6 @@ import_json () {
     USERS=$(jq -c '.users' "$1")
     return 0
 }
-#-----------------
-# get_home_partition
-# Cherche la partition du /home
-#-----------------
-get_home_partition() {
-    local mount_point
-    mount_point=$(findmnt -n -o SOURCE /home)
-
-    if [ -z "$mount_point" ]; then
-        echo "Erreur: impossible de trouver le point de montage de /home. Vérifiez votre configuration."
-        exit 1
-    fi
-
-    echo "$mount_point"
-}
-#-----------------
-# apply_quota
-# Applique le quota à un utilisateur
-# paramètres : "$username" "$quota_gb"
-#-----------------
-apply_quota() {
-    local username=$1
-    local quota_gb=$2
-    local quota_blocks=$((quota_gb * 1024 * 1024))
-    local home_partition=$(get_home_partition)
-
-    if ! id "$username" &>/dev/null; then
-        echo "L'utilisateur $username n'existe pas. Création de l'utilisateur..."
-        useradd -m "$username"
-    fi
-
-    setquota -u "$username" 0 "$quota_blocks" 0 0 "$home_partition"
-    echo "Quota de $quota_gb GB appliqué pour l'utilisateur $username"
-}
-
 
 #-----------------
 # add_user
@@ -119,19 +98,22 @@ apply_quota() {
 # paramètres :"$username" "$group" "$public_key" "$quota"
 #-----------------
 add_user () {
+    
     # Création de l'utlisateur (basics)
     groupadd -f "$2" # -f (Force) : fini avec succès, même si le groupe existe déjà
     useradd -m -d "/home/$1" -g "$2" "$1" # Création du home, affectation dans le groupe et ajout de l'utilisateur
-    # Ajout d'un quota sur son home
-    setquota -u "$1" 0 "$4" 0 0 / # A décrire
+    echo "creation du compte $1: OK"
 
-    # Ajout de la clef SSH
-    mkdir -p "/home/$1/.ssh" # -p : fini avec succès, même si le répertoire existe déjà
-    echo $3 >> "/home/$1/.ssh/authorized_keys"
-    
-    # Ajouter l'option from=IP à la clé SSH
+
+    # Ajout d'un quota sur son home
+    local quota_blocks=$(($4 * 1024 * 1024))
+    setquota -u "$1" 0 "$quota_blocks" 0 0 / # Ajout d'un quota sur pour l'utilisateur
+    echo "Quota de $4 GB appliqué pour l'utilisateur $1"
+
+    # Ajouter l'option from=IP et la clé SSH
     local ip=$(echo "$USERS" | jq -r ".[] | select(.username == \"$1\") | .ip")
     local authorized_key="from=\"$ip\" $3"
+    mkdir -p "/home/$1/.ssh" # -p : fini avec succès, même si le répertoire existe déjà
     echo "$authorized_key" >> "/home/$1/.ssh/authorized_keys"
     
     # Modification de propiétaire sur le home
@@ -151,41 +133,79 @@ add_user () {
 # Ouverture du port 22 dans le FW
 # paramètres :"$username" "$group" "$public_key" "$quota"
 #-----------------
-conf_SSH() {
+conf_SSH () {
+    # Activation du service OpenSSH si il n'est pas déjà activé
+
+
     # Désactiver l'authentification par mot de passe
     sed -i 's/^PasswordAuthentication yes/PasswordAuthentication no/g' /etc/ssh/sshd_config
+    sed -i 's/^#PasswordAuthentication yes/PasswordAuthentication no/g' /etc/ssh/sshd_config
     sed -i 's/^#PasswordAuthentication no/PasswordAuthentication no/g' /etc/ssh/sshd_config
 
     # Autoriser uniquement l'authentification par clé publique
     sed -i 's/^PubkeyAuthentication no/PubkeyAuthentication yes/g' /etc/ssh/sshd_config
     sed -i 's/^#PubkeyAuthentication yes/PubkeyAuthentication yes/g' /etc/ssh/sshd_config
+    sed -i 's/^#PubkeyAuthentication no/PubkeyAuthentication yes/g' /etc/ssh/sshd_config
 
     # Redémarrer le service SSH pour appliquer les changements
     systemctl restart sshd
-
+    sleep 10
     # Activer UFW si ce n'est pas déjà fait
-    ufw status | grep -q "active" || ufw enable
+    #ufw status | grep -q "active" || ufw enable
 
     # Configurer UFW pour autoriser les connexions SSH uniquement depuis les IPs spécifiées dans le fichier JSON
     # Réinitialiser les règles existantes pour éviter les conflits
-    ufw reset -y
+    # ufw reset -y
 
     # Définir la politique par défaut : tout refuser sauf ce qui est explicitement autorisé
-    ufw default deny incoming
-    ufw default allow outgoing
+    #ufw default deny incoming
+    #ufw default allow outgoing
 
     # Autoriser SSH depuis les IPs spécifiées dans le fichier JSON
-    echo "$USERS" | jq -c '.[]' | while read -r user; do
-        ip=$(echo "$user" | jq -r '.ip')
-        if [[ ! -z "$ip" ]]; then
-            ufw allow from "$ip" to any port 22 proto tcp comment "SSH from $ip"
-        fi
-    done
+    #echo "$USERS" | jq -c '.[]' | while read -r user; do
+    #    ip=$(echo "$user" | jq -r '.ip')
+    #    if [[ ! -z "$ip" ]]; then
+    #        ufw allow from "$ip" to any port 22 proto tcp comment "SSH from $ip"
+    #    fi
+    #done
 
     # Activer UFW
-    ufw enable
+    #ufw enable
 
     return 0
+}
+
+conf_quota () {
+    
+    # Modifier /etc/fstab pour activer les quotas sur /
+    echo "Modification de /etc/fstab..."
+    sed -i 's/errors=remount-ro/errors=remount-ro,usrquota,grpquota/' /etc/fstab
+
+    # Remonter la partition racine avec les nouvelles options (sans redémarrer)
+    echo "Remontage de /..."
+    # mount -o remount /
+    systemctl daemon-reload
+    sleep 10
+
+    # Vérifier que les quotas sont bien activés dans fstab
+    grep ' / ' /etc/fstab
+
+    # Création des fichiers de quotas
+    echo "Création des fichiers de quotas..."
+    quotacheck -cum /
+    quotacheck -ugm /
+
+    # Activation des quotas
+    echo "Activation des quotas..."
+    quotaon -v /
+
+    # Vérification de l'état des quotas
+    if quotaon -p / 2>/dev/null | grep -q "is on"; then
+        echo "Les quotas sont activés sur /"
+    else
+        echo "Les quotas n'ont pas pu être activés automatiquement, essayez une configuration manuel"
+        exit 1
+fi
 }
 
 
@@ -205,6 +225,18 @@ fi
 
 # Vérification de la présence des binaires nécessaires
 check_bin
+
+# Configuration SSH et du firewall
+conf_SSH
+
+# Configuration du système de quotas ?
+if quotaon -p / 2>/dev/null | grep -q "is on"; then
+    echo "Les quotas sont activés sur /"
+else
+    echo "Les quotas ne sont PAS activés sur /"
+    conf_quota
+fi
+
 
 while getopts ":f:vh" option
 do
@@ -230,7 +262,6 @@ do
     esac
 done
 
-# CONFIGURATION DU SYSTEM DE QUOTA ....  SYSTEME DE DISQUE ? RELOAD DE LA MACHINE ?
 
 if [ -s "$fichier" ]; then
     import_json $fichier
@@ -246,8 +277,7 @@ if [ "$VERBOSE" = true ]; then
     echo "Mode verbeux activé."
     echo "Lecture du fichier : $fichier"
 fi
-# Configuration SSH et du firewall AVANT l'ajout des utilisateurs
-conf_SSH
+
 echo "$USERS" | jq -c '.[]' | while read -r user; do
     username=$(echo "$user" | jq -r '.username')
     group=$(echo "$user" | jq -r '.group')
