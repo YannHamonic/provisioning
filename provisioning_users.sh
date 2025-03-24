@@ -40,35 +40,35 @@ show_help () {
 #   - quota et quotatool
 #-----------------
 check_bin () {
-    local check=False
+    local check= False
     if [ ! -f /usr/bin/jq ]; then
         echo "Erreur: Le binaire jq est nécessaire pour importer le fichier JSON"
         echo "  Vous pouvez installer jq avec APT: sudo apt install jq"
-        echo ""
-        check=True
+        echo " "
+        check= True
     fi
     if [ ! -f /usr/sbin/useradd ]; then
         echo "Erreur: La librairie libuser est nécessaire pour administrer les"
         echo "utilisateurs et les groupes"
         echo "  Vous pouvez installer libuser avec APT: sudo apt install libuser"
-        echo ""
-        check=True
+        echo " "
+        check= True
     fi
     if [ ! -f /usr/sbin/setquota ]; then
         echo "Erreur: Les librairies quota et quotatool sont nécessaires pour"
         echo "gérer les quotas des utilisateurs"
         echo "  Vous pouvez installer quota et quotatool avec APT:"
         echo "  sudo apt install quota quotatool"
-        echo ""
-        check=True
+        echo " "
+        check= True
     fi
     # Vérifier si OpenSSH est installé
     if ! command -v sshd > /dev/null 2>&1; then
         echo "Erreur: OpenSSH n'est pas installé."
         echo "  Vous devez installer openSSH avec APT:"
         echo "  sudo apt install openssh-server"
-        echo ""
-        check=True
+        echo " "
+        check= True
     fi
     if [ $check ]; then
         echo "Erreur durant la vérification des pré-requis"
