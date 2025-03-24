@@ -40,7 +40,7 @@ show_help () {
 #   - quota et quotatool
 #-----------------
 check_bin () {
-    local check= false
+    check= false
     if [ ! -f /usr/bin/jq ]; then
         echo "Erreur: Le binaire jq est nécessaire pour importer le fichier JSON"
         echo "  Vous pouvez installer jq avec APT: sudo apt install jq"
