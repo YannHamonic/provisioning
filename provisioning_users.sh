@@ -185,7 +185,7 @@ conf_quota () {
     # Remonter la partition racine avec les nouvelles options (sans redémarrer)
     echo "Remontage de /..."
     systemctl daemon-reload
-    sleep 30
+    sleep 10
     mount -o remount /
     
 
@@ -193,9 +193,9 @@ conf_quota () {
     grep ' / ' /etc/fstab
 
     # Création des fichiers de quotas
-    echo "Création des fichiers de quotas..."
-    quotacheck -cum /
-    quotacheck -ugm /
+    #echo "Création des fichiers de quotas..."
+    #quotacheck -cum /
+    #quotacheck -ugm /
 
     # Activation des quotas
     echo "Activation des quotas..."
