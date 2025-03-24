@@ -83,7 +83,7 @@ check_bin () {
 # Importer le contenu du fichier json dans une variable USERS
 #-----------------
 import_json () {
-    echo "$1" | jq .
+    #echo "$1" | jq .
     USERS= $(jq -c '.[]' "$1")
     echo "$USERS"
     return 0
