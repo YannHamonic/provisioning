@@ -41,19 +41,23 @@ show_help () {
 #-----------------
 check_bin () {
     local check=false
+    # Vérifier si le paquet jq pour importer des JSON est installé
     if [ ! -f /usr/bin/jq ]; then
         echo "Erreur: Le binaire jq est nécessaire pour importer le fichier JSON"
         echo "  Vous pouvez installer jq avec APT: sudo apt install jq"
         echo " "
         check=true
     fi
+    # Vérifier si le paquet libuser de gestion utilisateur est installé
     if [ ! -f /usr/sbin/useradd ]; then
         echo "Erreur: La librairie libuser est nécessaire pour administrer les"
         echo "utilisateurs et les groupes"
-        echo "  Vous pouvez installer libuser avec APT: sudo apt install libuser"
+        echo "  Vous pouvez installer libuser avec APT:"
+        echo "  sudo apt install libuser"
         echo " "
         check=true
     fi
+    # Vérifier si les paquets de gestion de quotas sont installés
     if [ ! -f /usr/sbin/setquota ]; then
         echo "Erreur: Les librairies quota et quotatool sont nécessaires pour"
         echo "gérer les quotas des utilisateurs"
@@ -204,6 +208,33 @@ conf_SSH () {
     return 0
 }
 
+conf_quota () {
+    
+    # Modifier /etc/fstab pour activer les quotas sur /
+    echo "Modification de /etc/fstab..."
+    sed -i 's/errors=remount-ro/errors=remount-ro,usrquota,grpquota/' /etc/fstab
+
+    # Remonter la partition racine avec les nouvelles options (sans redémarrer)
+    echo "Remontage de /..."
+    mount -o remount /
+
+    # Vérifier que les quotas sont bien activés dans fstab
+    grep ' / ' /etc/fstab
+
+    # Création des fichiers de quotas
+    echo "Création des fichiers de quotas..."
+    quotacheck -cum /
+    quotacheck -ugm /
+
+    # Activation des quotas
+    echo "Activation des quotas..."
+    quotaon -v /
+
+    # Vérification de l'état des quotas
+    echo "Vérification des quotas..."
+    quotaon -p /
+}
+
 
 
 #-----------------
@@ -225,7 +256,14 @@ check_bin
 # Configuration SSH et du firewall
 conf_SSH
 
-# CONFIGURATION DU SYSTEM DE QUOTA ....  SYSTEME DE DISQUE ? RELOAD DE LA MACHINE ?
+# Configuration du système de quotas ?
+if quotaon -p / 2>/dev/null | grep -q "is on"; then
+    echo "Les quotas sont activés sur /"
+else
+    echo "Les quotas ne sont PAS activés sur /"
+    conf_quota
+fi
+
 
 while getopts ":f:vh" option
 do
