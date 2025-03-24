@@ -216,7 +216,7 @@ conf_quota () {
 
     # Remonter la partition racine avec les nouvelles options (sans redémarrer)
     echo "Remontage de /..."
-    #mount -o remount /
+    mount -o remount /
     systemctl daemon-reload
 
     # Vérifier que les quotas sont bien activés dans fstab
@@ -232,8 +232,12 @@ conf_quota () {
     quotaon -v /
 
     # Vérification de l'état des quotas
-    echo "Vérification des quotas..."
-    quotaon -p /
+    if quotaon -p / 2>/dev/null | grep -q "is on"; then
+        echo "Les quotas sont activés sur /"
+    else
+        echo "Les quotas n'ont pas pu être activés automatiquement, essayez une configuration manuel"
+        exit 1
+fi
 }
 
 
