@@ -71,6 +71,8 @@ check_bin () {
         check=True
     fi
     if [ $check ]; then
+        echo "Erreur durant la vérification des pré-requis"
+        echo ""
         exit 1
     fi
     return 0
