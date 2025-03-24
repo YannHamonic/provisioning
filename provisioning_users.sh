@@ -110,8 +110,8 @@ get_home_partition() {
 apply_quota() {
     local username= $1
     local quota_gb= $2
-    local quota_blocks= $((quota_gb * 1024 * 1024))
-    local home_partition= $(get_home_partition)
+    local quota_blocks=$((quota_gb * 1024 * 1024))
+    local home_partition=$(get_home_partition)
 
     if ! id "$username" &>/dev/null; then
         echo "L'utilisateur $username n'existe pas. Création de l'utilisateur..."
@@ -135,7 +135,7 @@ add_user () {
     useradd -m -d "/home/$1" -g "$2" "$1" # Création du home, affectation dans le groupe et ajout de l'utilisateur
     
     # Ajout d'un quota sur son home
-    local quota_blocks= $(($4 * 1024 * 1024))
+    local quota_blocks=$(($4 * 1024 * 1024))
     setquota -u "$1" 0 "$quota_blocks" 0 0 /home/$1 # Ajout d'un quota sur le répertoire utilisateur
 
     # Ajout de la clef SSH
@@ -143,8 +143,8 @@ add_user () {
     echo $3 >> "/home/$1/.ssh/authorized_keys"
     
     # Ajouter l'option from=IP à la clé SSH
-    local ip= $(echo "$USERS" | jq -r ".[] | select(.username == \"$1\") | .ip")
-    local authorized_key= "from=\"$ip\" $3"
+    local ip=$(echo "$USERS" | jq -r ".[] | select(.username == \"$1\") | .ip")
+    local authorized_key="from=\"$ip\" $3"
     echo "$authorized_key" >> "/home/$1/.ssh/authorized_keys"
     
     # Modification de propiétaire sur le home
@@ -211,7 +211,7 @@ conf_SSH () {
 #-----------------
 
 fichier=""
-VERBOSE= false
+VERBOSE=false
 
 # Le script doit être exécuté en root (sudo)
 if [ ! $(whoami) = 'root' ]; then
@@ -268,10 +268,10 @@ if [ "$VERBOSE" = true ]; then
 fi
 
 echo "$USERS" | jq -c '.[]' | while read -r user; do
-    username= $(echo "$user" | jq -r '.username')
-    group= $(echo "$user" | jq -r '.group')
-    public_key= $(echo "$user" | jq -r '.public_key')
-    quota= $(echo "$user" | jq -r '.home_quota_gb')
+    username=$(echo "$user" | jq -r '.username')
+    group=$(echo "$user" | jq -r '.group')
+    public_key=$(echo "$user" | jq -r '.public_key')
+    quota=$(echo "$user" | jq -r '.home_quota_gb')
 
     add_user "$username" "$group" "$public_key" "$quota"
 done
