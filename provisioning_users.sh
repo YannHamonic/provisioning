@@ -195,7 +195,7 @@ conf_quota () {
     # Création des fichiers de quotas
     #echo "Création des fichiers de quotas..."
     #quotacheck -cum /
-    #quotacheck -ugm /
+    quotacheck -ugm /
 
     # Activation des quotas
     echo "Activation des quotas..."
