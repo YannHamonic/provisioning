@@ -216,7 +216,8 @@ conf_quota () {
 
     # Remonter la partition racine avec les nouvelles options (sans redémarrer)
     echo "Remontage de /..."
-    mount -o remount /
+    #mount -o remount /
+    systemctl daemon-reload
 
     # Vérifier que les quotas sont bien activés dans fstab
     grep ' / ' /etc/fstab
