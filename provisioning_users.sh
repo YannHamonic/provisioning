@@ -102,7 +102,7 @@ add_user () {
     # Création de l'utlisateur (basics)
     groupadd -f "$2" # -f (Force) : fini avec succès, même si le groupe existe déjà
     useradd -m -d "/home/$1" -g "$2" "$1" # Création du home, affectation dans le groupe et ajout de l'utilisateur
-    echo "creation de l'utlisateur $1: OK"
+    echo "creation du compte $1: OK"
 
 
     # Ajout d'un quota sur son home
@@ -139,11 +139,13 @@ conf_SSH () {
 
     # Désactiver l'authentification par mot de passe
     sed -i 's/^PasswordAuthentication yes/PasswordAuthentication no/g' /etc/ssh/sshd_config
+    sed -i 's/^#PasswordAuthentication yes/PasswordAuthentication no/g' /etc/ssh/sshd_config
     sed -i 's/^#PasswordAuthentication no/PasswordAuthentication no/g' /etc/ssh/sshd_config
 
     # Autoriser uniquement l'authentification par clé publique
     sed -i 's/^PubkeyAuthentication no/PubkeyAuthentication yes/g' /etc/ssh/sshd_config
     sed -i 's/^#PubkeyAuthentication yes/PubkeyAuthentication yes/g' /etc/ssh/sshd_config
+    sed -i 's/^#PubkeyAuthentication no/PubkeyAuthentication yes/g' /etc/ssh/sshd_config
 
     # Redémarrer le service SSH pour appliquer les changements
     systemctl restart sshd
