@@ -44,7 +44,8 @@ check_bin () {
     # Vérifier si le paquet jq pour importer des JSON est installé
     if [ ! -f /usr/bin/jq ]; then
         echo "Erreur: Le binaire jq est nécessaire pour importer le fichier JSON"
-        echo "  Vous pouvez installer jq avec APT: sudo apt install jq"
+        echo "  Vous pouvez installer jq avec APT:"
+        echo "  sudo apt install jq"
         echo " "
         check=true
     fi
@@ -183,9 +184,10 @@ conf_quota () {
 
     # Remonter la partition racine avec les nouvelles options (sans redémarrer)
     echo "Remontage de /..."
-    # mount -o remount /
     systemctl daemon-reload
-    sleep 10
+    sleep 30
+    mount -o remount /
+    
 
     # Vérifier que les quotas sont bien activés dans fstab
     grep ' / ' /etc/fstab
