@@ -88,7 +88,7 @@ check_bin () {
 # Importer le contenu du fichier json dans une variable USERS
 #-----------------
 import_json () {
-    echo "$1" | jq .
+    #echo "$1" | jq .
     USERS=$(jq -c '.users' "$1")
     return 0
 }
@@ -184,13 +184,11 @@ conf_quota () {
 
     # Remonter la partition racine avec les nouvelles options (sans redémarrer)
     echo "Remontage de /..."
+
+    mount -o remount /
+
     systemctl daemon-reload
     sleep 10
-    mount -o remount /
-    
-
-    # Vérifier que les quotas sont bien activés dans fstab
-    grep ' / ' /etc/fstab
 
     # Création des fichiers de quotas
     #echo "Création des fichiers de quotas..."
@@ -227,18 +225,6 @@ fi
 
 # Vérification de la présence des binaires nécessaires
 check_bin
-
-# Configuration SSH et du firewall
-conf_SSH
-
-# Configuration du système de quotas ?
-if quotaon -p / 2>/dev/null | grep -q "is on"; then
-    echo "Les quotas sont activés sur /"
-else
-    echo "Les quotas ne sont PAS activés sur /"
-    conf_quota
-fi
-
 
 while getopts ":f:vh" option
 do
@@ -277,7 +263,17 @@ fi
 
 if [ "$VERBOSE" = true ]; then
     echo "Mode verbeux activé."
-    echo "Lecture du fichier : $fichier"
+fi
+
+# Configuration SSH et du firewall
+conf_SSH
+
+# Configuration du système de quotas ?
+if quotaon -p / 2>/dev/null | grep -q "is on"; then
+    echo "Les quotas sont activés sur /"
+else
+    echo "Les quotas ne sont PAS activés sur /"
+    conf_quota
 fi
 
 echo "$USERS" | jq -c '.[]' | while read -r user; do
@@ -288,9 +284,5 @@ echo "$USERS" | jq -c '.[]' | while read -r user; do
 
     add_user "$username" "$group" "$public_key" "$quota"
 done
-
-# Configurer le service SSH + ouvrir le port 22 dans le FW
-# Eventuellement à faire avant l'ajout des utilisateurs pour que l'on puisse autoriser les IP's à la lecture de celles-ci
-# conf_SSH
 
 exit 0
