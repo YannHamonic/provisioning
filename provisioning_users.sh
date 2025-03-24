@@ -40,19 +40,19 @@ show_help () {
 #   - quota et quotatool
 #-----------------
 check_bin () {
-    local check = False
+    local check= false
     if [ ! -f /usr/bin/jq ]; then
         echo "Erreur: Le binaire jq est nécessaire pour importer le fichier JSON"
         echo "  Vous pouvez installer jq avec APT: sudo apt install jq"
         echo " "
-        check = True
+        check= true
     fi
     if [ ! -f /usr/sbin/useradd ]; then
         echo "Erreur: La librairie libuser est nécessaire pour administrer les"
         echo "utilisateurs et les groupes"
         echo "  Vous pouvez installer libuser avec APT: sudo apt install libuser"
         echo " "
-        check = True
+        check= true
     fi
     if [ ! -f /usr/sbin/setquota ]; then
         echo "Erreur: Les librairies quota et quotatool sont nécessaires pour"
@@ -60,7 +60,7 @@ check_bin () {
         echo "  Vous pouvez installer quota et quotatool avec APT:"
         echo "  sudo apt install quota quotatool"
         echo " "
-        check = True
+        check= true
     fi
     # Vérifier si OpenSSH est installé
     if ! command -v sshd > /dev/null 2>&1; then
@@ -68,9 +68,9 @@ check_bin () {
         echo "  Vous devez installer openSSH avec APT:"
         echo "  sudo apt install openssh-server"
         echo " "
-        check = True
+        check= true
     fi
-    if [ $check ]; then
+    if $check; then
         echo "Erreur durant la vérification des pré-requis"
         echo ""
         exit 1
@@ -84,7 +84,7 @@ check_bin () {
 #-----------------
 import_json () {
     echo "$1" | jq .
-    USERS = $(jq -c '.users' "$1")
+    USERS= $(jq -c '.users' "$1")
     return 0
 }
 #-----------------
@@ -93,7 +93,7 @@ import_json () {
 #-----------------
 get_home_partition() {
     local mount_point
-    mount_point = $(findmnt -n -o SOURCE /home)
+    mount_point= $(findmnt -n -o SOURCE /home)
 
     if [ -z "$mount_point" ]; then
         echo "Erreur: impossible de trouver le point de montage de /home. Vérifiez votre configuration."
@@ -108,10 +108,10 @@ get_home_partition() {
 # paramètres : "$username" "$quota_gb"
 #-----------------
 apply_quota() {
-    local username = $1
-    local quota_gb = $2
-    local quota_blocks = $((quota_gb * 1024 * 1024))
-    local home_partition = $(get_home_partition)
+    local username= $1
+    local quota_gb= $2
+    local quota_blocks= $((quota_gb * 1024 * 1024))
+    local home_partition= $(get_home_partition)
 
     if ! id "$username" &>/dev/null; then
         echo "L'utilisateur $username n'existe pas. Création de l'utilisateur..."
@@ -129,19 +129,22 @@ apply_quota() {
 # paramètres :"$username" "$group" "$public_key" "$quota"
 #-----------------
 add_user () {
+    
     # Création de l'utlisateur (basics)
     groupadd -f "$2" # -f (Force) : fini avec succès, même si le groupe existe déjà
     useradd -m -d "/home/$1" -g "$2" "$1" # Création du home, affectation dans le groupe et ajout de l'utilisateur
+    
     # Ajout d'un quota sur son home
-    setquota -u "$1" 0 "$4" 0 0 / # A décrire
+    local quota_blocks= $(($4 * 1024 * 1024))
+    setquota -u "$1" 0 "$quota_blocks" 0 0 /home/$1 # Ajout d'un quota sur le répertoire utilisateur
 
     # Ajout de la clef SSH
     mkdir -p "/home/$1/.ssh" # -p : fini avec succès, même si le répertoire existe déjà
     echo $3 >> "/home/$1/.ssh/authorized_keys"
     
     # Ajouter l'option from=IP à la clé SSH
-    local ip = $(echo "$USERS" | jq -r ".[] | select(.username == \"$1\") | .ip")
-    local authorized_key="from=\"$ip\" $3"
+    local ip= $(echo "$USERS" | jq -r ".[] | select(.username == \"$1\") | .ip")
+    local authorized_key= "from=\"$ip\" $3"
     echo "$authorized_key" >> "/home/$1/.ssh/authorized_keys"
     
     # Modification de propiétaire sur le home
@@ -162,6 +165,9 @@ add_user () {
 # paramètres :"$username" "$group" "$public_key" "$quota"
 #-----------------
 conf_SSH () {
+    # Activation du service OpenSSH si il n'est pas déjà activé
+
+
     # Désactiver l'authentification par mot de passe
     sed -i 's/^PasswordAuthentication yes/PasswordAuthentication no/g' /etc/ssh/sshd_config
     sed -i 's/^#PasswordAuthentication no/PasswordAuthentication no/g' /etc/ssh/sshd_config
@@ -174,26 +180,26 @@ conf_SSH () {
     systemctl restart sshd
 
     # Activer UFW si ce n'est pas déjà fait
-    ufw status | grep -q "active" || ufw enable
+    #ufw status | grep -q "active" || ufw enable
 
     # Configurer UFW pour autoriser les connexions SSH uniquement depuis les IPs spécifiées dans le fichier JSON
     # Réinitialiser les règles existantes pour éviter les conflits
-    ufw reset -y
+    # ufw reset -y
 
     # Définir la politique par défaut : tout refuser sauf ce qui est explicitement autorisé
-    ufw default deny incoming
-    ufw default allow outgoing
+    #ufw default deny incoming
+    #ufw default allow outgoing
 
     # Autoriser SSH depuis les IPs spécifiées dans le fichier JSON
-    echo "$USERS" | jq -c '.[]' | while read -r user; do
-        ip=$(echo "$user" | jq -r '.ip')
-        if [[ ! -z "$ip" ]]; then
-            ufw allow from "$ip" to any port 22 proto tcp comment "SSH from $ip"
-        fi
-    done
+    #echo "$USERS" | jq -c '.[]' | while read -r user; do
+    #    ip=$(echo "$user" | jq -r '.ip')
+    #    if [[ ! -z "$ip" ]]; then
+    #        ufw allow from "$ip" to any port 22 proto tcp comment "SSH from $ip"
+    #    fi
+    #done
 
     # Activer UFW
-    ufw enable
+    #ufw enable
 
     return 0
 }
@@ -204,8 +210,8 @@ conf_SSH () {
 # Main
 #-----------------
 
-fichier = ""
-VERBOSE = false
+fichier= ""
+VERBOSE= false
 
 # Le script doit être exécuté en root (sudo)
 if [ ! $(whoami) = 'root' ]; then
@@ -262,10 +268,10 @@ if [ "$VERBOSE" = true ]; then
 fi
 
 echo "$USERS" | jq -c '.[]' | while read -r user; do
-    username = $(echo "$user" | jq -r '.username')
-    group = $(echo "$user" | jq -r '.group')
-    public_key = $(echo "$user" | jq -r '.public_key')
-    quota = $(echo "$user" | jq -r '.home_quota_gb')
+    username= $(echo "$user" | jq -r '.username')
+    group= $(echo "$user" | jq -r '.group')
+    public_key= $(echo "$user" | jq -r '.public_key')
+    quota= $(echo "$user" | jq -r '.home_quota_gb')
 
     add_user "$username" "$group" "$public_key" "$quota"
 done
