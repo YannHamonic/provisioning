@@ -140,7 +140,7 @@ add_user () {
     
     # Ajout d'un quota sur son home
     local quota_blocks=$(($4 * 1024 * 1024))
-    setquota -u "$1" 0 "$quota_blocks" 0 0 /home/$1 # Ajout d'un quota sur le répertoire utilisateur
+    setquota -u "$1" 0 "$quota_blocks" 0 0 / # Ajout d'un quota sur pour l'utilisateur
 
     # Ajout de la clef SSH
     mkdir -p "/home/$1/.ssh" # -p : fini avec succès, même si le répertoire existe déjà
