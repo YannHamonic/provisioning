@@ -88,7 +88,6 @@ check_bin () {
 # Importer le contenu du fichier json dans une variable USERS
 #-----------------
 import_json () {
-    #echo "$1" | jq .
     USERS=$(jq -c '.users' "$1")
     return 0
 }
@@ -184,11 +183,11 @@ conf_quota () {
 
     # Remonter la partition racine avec les nouvelles options (sans redémarrer)
     echo "Remontage de /..."
-
-    mount -o remount /
-
     systemctl daemon-reload
     sleep 10
+    mount -o remount /
+
+    
 
     # Création des fichiers de quotas
     #echo "Création des fichiers de quotas..."
