@@ -77,6 +77,41 @@ import_json () {
     USERS=$(jq -c '.users' "$1")
     return 0
 }
+#-----------------
+# get_home_partition
+# Cherche la partition du /home
+#-----------------
+get_home_partition() {
+    local mount_point
+    mount_point=$(findmnt -n -o SOURCE /home)
+
+    if [ -z "$mount_point" ]; then
+        echo "Erreur: impossible de trouver le point de montage de /home. Vérifiez votre configuration."
+        exit 1
+    fi
+
+    echo "$mount_point"
+}
+#-----------------
+# apply_quota
+# Applique le quota à un utilisateur
+# paramètres : "$username" "$quota_gb"
+#-----------------
+apply_quota() {
+    local username=$1
+    local quota_gb=$2
+    local quota_blocks=$((quota_gb * 1024 * 1024))
+    local home_partition=$(get_home_partition)
+
+    if ! id "$username" &>/dev/null; then
+        echo "L'utilisateur $username n'existe pas. Création de l'utilisateur..."
+        useradd -m "$username"
+    fi
+
+    setquota -u "$username" 0 "$quota_blocks" 0 0 "$home_partition"
+    echo "Quota de $quota_gb GB appliqué pour l'utilisateur $username"
+}
+
 
 #-----------------
 # add_user
@@ -93,7 +128,12 @@ add_user () {
     # Ajout de la clef SSH
     mkdir -p "/home/$1/.ssh" # -p : fini avec succès, même si le répertoire existe déjà
     echo $3 >> "/home/$1/.ssh/authorized_keys"
-
+    
+    # Ajouter l'option from=IP à la clé SSH
+    local ip=$(echo "$USERS" | jq -r ".[] | select(.username == \"$1\") | .ip")
+    local authorized_key="from=\"$ip\" $3"
+    echo "$authorized_key" >> "/home/$1/.ssh/authorized_keys"
+    
     # Modification de propiétaire sur le home
     chown  -R "$1:$2" "/home/$1"
     # Modification des droits sur
@@ -111,9 +151,44 @@ add_user () {
 # Ouverture du port 22 dans le FW
 # paramètres :"$username" "$group" "$public_key" "$quota"
 #-----------------
-conf_SSH () {
+conf_SSH() {
+    # Désactiver l'authentification par mot de passe
+    sed -i 's/^PasswordAuthentication yes/PasswordAuthentication no/g' /etc/ssh/sshd_config
+    sed -i 's/^#PasswordAuthentication no/PasswordAuthentication no/g' /etc/ssh/sshd_config
+
+    # Autoriser uniquement l'authentification par clé publique
+    sed -i 's/^PubkeyAuthentication no/PubkeyAuthentication yes/g' /etc/ssh/sshd_config
+    sed -i 's/^#PubkeyAuthentication yes/PubkeyAuthentication yes/g' /etc/ssh/sshd_config
+
+    # Redémarrer le service SSH pour appliquer les changements
+    systemctl restart sshd
+
+    # Activer UFW si ce n'est pas déjà fait
+    ufw status | grep -q "active" || ufw enable
+
+    # Configurer UFW pour autoriser les connexions SSH uniquement depuis les IPs spécifiées dans le fichier JSON
+    # Réinitialiser les règles existantes pour éviter les conflits
+    ufw reset -y
+
+    # Définir la politique par défaut : tout refuser sauf ce qui est explicitement autorisé
+    ufw default deny incoming
+    ufw default allow outgoing
+
+    # Autoriser SSH depuis les IPs spécifiées dans le fichier JSON
+    echo "$USERS" | jq -c '.[]' | while read -r user; do
+        ip=$(echo "$user" | jq -r '.ip')
+        if [[ ! -z "$ip" ]]; then
+            ufw allow from "$ip" to any port 22 proto tcp comment "SSH from $ip"
+        fi
+    done
+
+    # Activer UFW
+    ufw enable
+
     return 0
 }
+
+
 
 #-----------------
 # Main
@@ -171,7 +246,8 @@ if [ "$VERBOSE" = true ]; then
     echo "Mode verbeux activé."
     echo "Lecture du fichier : $fichier"
 fi
-
+# Configuration SSH et du firewall AVANT l'ajout des utilisateurs
+conf_SSH
 echo "$USERS" | jq -c '.[]' | while read -r user; do
     username=$(echo "$user" | jq -r '.username')
     group=$(echo "$user" | jq -r '.group')
