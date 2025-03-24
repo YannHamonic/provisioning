@@ -216,7 +216,7 @@ check_bin
 
 while getopts ":f:vh" option
 do
-#    echo "getopts a trouvé l'option $option"
+    echo "getopts a trouvé l'option $option"
     case $option in
         f)  fichier="$OPTARG"
             ;;
