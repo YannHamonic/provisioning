@@ -10,7 +10,7 @@ git clone https://github.com/YannHamonic/provisioning
 # Utilisation
 ./provisionning_users.sh -f  <users.json> \[-v\] \[-h\]
 
-Le fichier des utilisateurs "fuser.json" doit être au format JSON.
+Le fichier des utilisateurs "users.json" doit être au format JSON.
 Exemple :
 ```JSON
 {
