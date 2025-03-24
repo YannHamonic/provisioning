@@ -62,6 +62,14 @@ check_bin () {
         echo ""
         check=True
     fi
+    # Vérifier si OpenSSH est installé
+    if ! command -v sshd > /dev/null 2>&1; then
+        echo "Erreur: OpenSSH n'est pas installé."
+        echo "  Vous devez installer openSSH avec APT:"
+        echo "  sudo apt install openssh-server"
+        echo ""
+        check=True
+    fi
     if [ $check ]; then
         exit 1
     fi
