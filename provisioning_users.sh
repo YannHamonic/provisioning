@@ -210,7 +210,7 @@ conf_SSH () {
 # Main
 #-----------------
 
-fichier= ""
+fichier=""
 VERBOSE= false
 
 # Le script doit être exécuté en root (sudo)
