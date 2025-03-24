@@ -180,7 +180,7 @@ conf_quota () {
     
     # Modifier /etc/fstab pour activer les quotas sur /
     echo "Modification de /etc/fstab..."
-    sed -i 's/errors=remount-ro/errors=remount-ro,usrquota,grpquota/' /etc/fstab
+    sed -i 's/errors=remount-ro/errors=remount-ro,usrjquota=aquota.user,grpjquota=aquota.group,jqfmt=vfsv0/' /etc/fstab
 
     # Remonter la partition racine avec les nouvelles options (sans redémarrer)
     echo "Remontage de /..."
