@@ -91,41 +91,6 @@ import_json () {
     USERS=$(jq -c '.users' "$1")
     return 0
 }
-#-----------------
-# get_home_partition
-# Cherche la partition du /home
-#-----------------
-get_home_partition() {
-    local mount_point
-    mount_point= $(findmnt -n -o SOURCE /home)
-
-    if [ -z "$mount_point" ]; then
-        echo "Erreur: impossible de trouver le point de montage de /home. Vérifiez votre configuration."
-        exit 1
-    fi
-
-    echo "$mount_point"
-}
-#-----------------
-# apply_quota
-# Applique le quota à un utilisateur
-# paramètres : "$username" "$quota_gb"
-#-----------------
-apply_quota() {
-    local username= $1
-    local quota_gb= $2
-    local quota_blocks=$((quota_gb * 1024 * 1024))
-    local home_partition=$(get_home_partition)
-
-    if ! id "$username" &>/dev/null; then
-        echo "L'utilisateur $username n'existe pas. Création de l'utilisateur..."
-        useradd -m "$username"
-    fi
-
-    setquota -u "$username" 0 "$quota_blocks" 0 0 "$home_partition"
-    echo "Quota de $quota_gb GB appliqué pour l'utilisateur $username"
-}
-
 
 #-----------------
 # add_user
@@ -137,18 +102,18 @@ add_user () {
     # Création de l'utlisateur (basics)
     groupadd -f "$2" # -f (Force) : fini avec succès, même si le groupe existe déjà
     useradd -m -d "/home/$1" -g "$2" "$1" # Création du home, affectation dans le groupe et ajout de l'utilisateur
-    
+    echo "creation de l'utlisateur $1: OK"
+
+
     # Ajout d'un quota sur son home
     local quota_blocks=$(($4 * 1024 * 1024))
     setquota -u "$1" 0 "$quota_blocks" 0 0 / # Ajout d'un quota sur pour l'utilisateur
+    echo "Quota de $4 GB appliqué pour l'utilisateur $1"
 
-    # Ajout de la clef SSH
-    mkdir -p "/home/$1/.ssh" # -p : fini avec succès, même si le répertoire existe déjà
-    echo $3 >> "/home/$1/.ssh/authorized_keys"
-    
-    # Ajouter l'option from=IP à la clé SSH
+    # Ajouter l'option from=IP et la clé SSH
     local ip=$(echo "$USERS" | jq -r ".[] | select(.username == \"$1\") | .ip")
     local authorized_key="from=\"$ip\" $3"
+    mkdir -p "/home/$1/.ssh" # -p : fini avec succès, même si le répertoire existe déjà
     echo "$authorized_key" >> "/home/$1/.ssh/authorized_keys"
     
     # Modification de propiétaire sur le home
@@ -182,7 +147,7 @@ conf_SSH () {
 
     # Redémarrer le service SSH pour appliquer les changements
     systemctl restart sshd
-
+    sleep 10
     # Activer UFW si ce n'est pas déjà fait
     #ufw status | grep -q "active" || ufw enable
 
@@ -216,8 +181,9 @@ conf_quota () {
 
     # Remonter la partition racine avec les nouvelles options (sans redémarrer)
     echo "Remontage de /..."
-    mount -o remount /
+    # mount -o remount /
     systemctl daemon-reload
+    sleep 10
 
     # Vérifier que les quotas sont bien activés dans fstab
     grep ' / ' /etc/fstab
