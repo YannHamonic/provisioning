@@ -84,7 +84,8 @@ check_bin () {
 #-----------------
 import_json () {
     echo "$1" | jq .
-    USERS= $(jq -c '.users' "$1")
+    USERS= $(jq -c '.[]' "$1")
+    echo "$USERS"
     return 0
 }
 #-----------------
@@ -229,7 +230,7 @@ conf_SSH
 
 while getopts ":f:vh" option
 do
-    echo "getopts a trouvé l'option $option"
+#    echo "getopts a trouvé l'option $option"
     case $option in
         f)  fichier="$OPTARG"
             ;;
