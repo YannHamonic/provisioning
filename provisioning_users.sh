@@ -84,7 +84,7 @@ check_bin () {
 #-----------------
 import_json () {
     #echo "$1" | jq .
-    USERS= $(jq -c '.[]' "$1")
+    USERS=$(jq -c '.[]' "$1")
     echo "$USERS"
     return 0
 }
