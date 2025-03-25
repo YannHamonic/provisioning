@@ -124,7 +124,7 @@ add_user () {
         if [ "$VERBOSE" = true ]; then
            echo "L'utilisateur $1 a été créé avec succès"
         fi 
-    elif [ $? -eq 4 ]; then
+    elif [ $? -eq 9 ]; then
         if [ "$VERBOSE" = true ]; then
             echo "L'utilisateur $1 existe déjà, les informations du JSON seront ajoutées"
         fi
@@ -288,7 +288,7 @@ if [ "$VERBOSE" = true ]; then
 fi
 
 # Configuration SSH
-if ! grep -q "PasswordAuthentication no" /etc/ssh/sshd_config && ! grep -q "PubkeyAuthentication yes" /etc/ssh/sshd_config; then
+if ! grep -q "PasswordAuthentication no" /etc/ssh/sshd_config || ! grep -q "PubkeyAuthentication yes" /etc/ssh/sshd_config; then
     if [ "$VERBOSE" = true ]; then
         echo "Configuration du service SSH..."
     fi
