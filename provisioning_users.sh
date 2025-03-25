@@ -270,6 +270,10 @@ do
 done
 
 
+if [ "$VERBOSE" = true ]; then
+    echo "Mode verbeux activé."
+fi
+
 if [ -s "$fichier" ]; then
     if [ "$VERBOSE" = true ]; then
         echo "Importation du fichier JSON..."
@@ -283,9 +287,7 @@ else
     exit 1
 fi
 
-if [ "$VERBOSE" = true ]; then
-    echo "Mode verbeux activé."
-fi
+
 
 # Configuration SSH
 if ! grep -q "PasswordAuthentication no" /etc/ssh/sshd_config || ! grep -q "PubkeyAuthentication yes" /etc/ssh/sshd_config; then
