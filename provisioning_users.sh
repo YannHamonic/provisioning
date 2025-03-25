@@ -120,11 +120,13 @@ add_user () {
 
     # Création de l'utlisateur
     useradd -m -d "/home/$1" -G "$2" -s /bin/bash "$1" 2>/dev/null # Création du home, affectation dans le groupe et ajout de l'utilisateur
-    if [ $? -eq 0 ]; then
+    local code_retour=$?
+    echo "code retour: $code_retour"
+    if [ $code_retour -eq 0 ]; then
         if [ "$VERBOSE" = true ]; then
            echo "L'utilisateur $1 a été créé avec succès"
         fi 
-    elif [ $? -eq 9 ]; then
+    elif [ $code_retour -eq 9 ]; then
         if [ "$VERBOSE" = true ]; then
             echo "L'utilisateur $1 existe déjà, les informations du JSON seront ajoutées"
         fi
