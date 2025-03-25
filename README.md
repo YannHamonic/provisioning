@@ -20,14 +20,14 @@ Exemple :
       "group": "devs",
       "ip": "10.170.12.1",
       "public_key": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBDIA/wzeamzAIf2ZwQ1fZgFzkfqqDaOL2jx6wSF1vlRPLIAC7vAhW1byZBH4l2jCN5+ixAvGvP+IvZ+Py/QRXC8= yann@YH-CLT-AA0001",
-      "home_quota_gb": 50
+      "home_quota_gb": 1
     },
     {
       "username": "user2",
       "group": "devs",
       "ip": "10.170.12.2",
       "public_key": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBAPLfA+nyBVbNdmUyXtxLpsNnECo2fsEyALdsC+7XQZc/D7oIL8SOCGTz653Ce3QE50NXaKRqeyODezjTNTVlew= yann@YH-CLT-AA0001",
-      "home_quota_gb": 100
+      "home_quota_gb": 2
     }
   ]
 }

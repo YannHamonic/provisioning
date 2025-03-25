@@ -89,6 +89,14 @@ check_bin () {
 #-----------------
 import_json () {
     USERS=$(jq -c '.users' "$1")
+    if [ $? -eq 0 ]; then
+        if [ "$VERBOSE" = true ]; then
+            echo "Les utilisateurs ont été importés avec succès"
+        fi 
+    else
+        echo "Erreur: L'importation des utilisateurs a échoué !"
+        exit 1
+    fi   
     return 0
 }
 
@@ -99,22 +107,52 @@ import_json () {
 #-----------------
 add_user () {
     
-    # Création de l'utlisateur (basics)
+    # Création du groupe
     groupadd -f "$2" # -f (Force) : fini avec succès, même si le groupe existe déjà
-    useradd -m -d "/home/$1" -g "$2" "$1" # Création du home, affectation dans le groupe et ajout de l'utilisateur
-    echo "creation du compte $1: OK"
+    if [ $? -eq 0 ]; then
+        if [ "$VERBOSE" = true ]; then
+            echo "Le groupe $2 a été ajouté avec succès"
+        fi 
+    else
+        echo "Erreur: Le groupe $2 n'a pas pu être créé !"
+        exit 1
+    fi
 
-
+    # Création de l'utlisateur
+    useradd -m -d "/home/$1" -G "$2" -s /bin/bash "$1" 2>/dev/null # Création du home, affectation dans le groupe et ajout de l'utilisateur
+    if [ $? -eq 0 ]; then
+        if [ "$VERBOSE" = true ]; then
+           echo "L'utilisateur $1 a été créé avec succès"
+        fi 
+    elif [ $? -eq 4 ]; then
+        if [ "$VERBOSE" = true ]; then
+            echo "L'utilisateur $1 existe déjà, les informations du JSON seront ajoutées"
+        fi
+    else
+        echo "Erreur: Il y a eu un problème lors de la création de l'utlisateur $1 !"
+        exit 1
+    fi
+    
     # Ajout d'un quota sur son home
     local quota_blocks=$(($4 * 1024 * 1024))
     setquota -u "$1" 0 "$quota_blocks" 0 0 / # Ajout d'un quota sur pour l'utilisateur
-    echo "Quota de $4 GB appliqué pour l'utilisateur $1"
+    if [ $? -eq 0 ]; then
+        if [ "$VERBOSE" = true ]; then
+            echo "Quota de $4 GB appliqué pour l'utilisateur $1"
+        fi
+    else
+        echo "Alerte: Echec lors de la création du quota pour l'utilisateur $1"
+    fi
+    
 
     # Ajouter l'option from=IP et la clé SSH
     local ip=$(echo "$USERS" | jq -r ".[] | select(.username == \"$1\") | .ip")
     local authorized_key="from=\"$ip\" $3"
     mkdir -p "/home/$1/.ssh" # -p : fini avec succès, même si le répertoire existe déjà
     echo "$authorized_key" >> "/home/$1/.ssh/authorized_keys"
+    if [ "$VERBOSE" = true ]; then
+        echo "Ajout de l'IP origine et de la clef SSH pour l'utilisateur $1"
+    fi
     
     # Modification de propiétaire sur le home
     chown  -R "$1:$2" "/home/$1"
@@ -123,7 +161,8 @@ add_user () {
     chmod 700 "/home/$1/.ssh"
     #   - le fichier des clefs autorisées
     chmod 600 "/home/$1/.ssh/authorized_keys"
-
+    
+    echo "Le compte $1 a été créé avec succès"
     return 0
 }
 
@@ -134,9 +173,6 @@ add_user () {
 # paramètres :"$username" "$group" "$public_key" "$quota"
 #-----------------
 conf_SSH () {
-    # Activation du service OpenSSH si il n'est pas déjà activé
-
-
     # Désactiver l'authentification par mot de passe
     sed -i 's/^PasswordAuthentication yes/PasswordAuthentication no/g' /etc/ssh/sshd_config
     sed -i 's/^#PasswordAuthentication yes/PasswordAuthentication no/g' /etc/ssh/sshd_config
@@ -149,28 +185,10 @@ conf_SSH () {
 
     # Redémarrer le service SSH pour appliquer les changements
     systemctl restart sshd
+    if [ "$VERBOSE" = true ]; then
+        echo "Redémarrage du service SSH..."
+    fi
     sleep 10
-    # Activer UFW si ce n'est pas déjà fait
-    #ufw status | grep -q "active" || ufw enable
-
-    # Configurer UFW pour autoriser les connexions SSH uniquement depuis les IPs spécifiées dans le fichier JSON
-    # Réinitialiser les règles existantes pour éviter les conflits
-    # ufw reset -y
-
-    # Définir la politique par défaut : tout refuser sauf ce qui est explicitement autorisé
-    #ufw default deny incoming
-    #ufw default allow outgoing
-
-    # Autoriser SSH depuis les IPs spécifiées dans le fichier JSON
-    #echo "$USERS" | jq -c '.[]' | while read -r user; do
-    #    ip=$(echo "$user" | jq -r '.ip')
-    #    if [[ ! -z "$ip" ]]; then
-    #        ufw allow from "$ip" to any port 22 proto tcp comment "SSH from $ip"
-    #    fi
-    #done
-
-    # Activer UFW
-    #ufw enable
 
     return 0
 }
@@ -178,24 +196,28 @@ conf_SSH () {
 conf_quota () {
     
     # Modifier /etc/fstab pour activer les quotas sur /
-    echo "Modification de /etc/fstab..."
+    if [ "$VERBOSE" = true ]; then
+        echo "Modification de /etc/fstab..."
+    fi
     sed -i 's/errors=remount-ro/errors=remount-ro,usrjquota=aquota.user,grpjquota=aquota.group,jqfmt=vfsv0/' /etc/fstab
 
     # Remonter la partition racine avec les nouvelles options (sans redémarrer)
-    echo "Remontage de /..."
+
     systemctl daemon-reload
+    if [ "$VERBOSE" = true ]; then
+        echo "Redémarrage du daemon..."
+    fi
     sleep 10
+    if [ "$VERBOSE" = true ]; then
+        echo "Remontage de /..."
+    fi
     mount -o remount /
 
-    
-
-    # Création des fichiers de quotas
-    #echo "Création des fichiers de quotas..."
-    #quotacheck -cum /
-    quotacheck -ugm /
-
     # Activation des quotas
-    echo "Activation des quotas..."
+    if [ "$VERBOSE" = true ]; then
+        echo "Activation des quotas..."
+    fi    
+    quotacheck -ugm /
     quotaon /
 
     # Vérification de l'état des quotas
@@ -204,10 +226,9 @@ conf_quota () {
     else
         echo "Les quotas n'ont pas pu être activés automatiquement, essayez une configuration manuel"
         exit 1
-fi
+    fi
+    return 0
 }
-
-
 
 #-----------------
 # Main
@@ -227,7 +248,6 @@ check_bin
 
 while getopts ":f:vh" option
 do
-#    echo "getopts a trouvé l'option $option"
     case $option in
         f)  fichier="$OPTARG"
             ;;
@@ -251,6 +271,9 @@ done
 
 
 if [ -s "$fichier" ]; then
+    if [ "$VERBOSE" = true ]; then
+        echo "Importation du fichier JSON..."
+    fi   
     import_json $fichier
 elif [ "$fichier" = '' ]; then
     echo "Erreur : Vous devez indiquer un nom de fichier valide en argument -f"
@@ -264,14 +287,23 @@ if [ "$VERBOSE" = true ]; then
     echo "Mode verbeux activé."
 fi
 
-# Configuration SSH et du firewall
-conf_SSH
+# Configuration SSH
+if ! grep -q "PasswordAuthentication " /etc/ssh/sshd_config && ! grep -q "PubkeyAuthentication yes" /etc/ssh/sshd_config; then
+    if [ "$VERBOSE" = true ]; then
+        echo "Configuration du service SSH..."
+    fi
+    conf_SSH
+fi
 
 # Configuration du système de quotas ?
 if quotaon -p / 2>/dev/null | grep -q "is on"; then
-    echo "Les quotas sont activés sur /"
+    if [ "$VERBOSE" = true ]; then
+        echo "Les quotas sont activés sur /"
+    fi    
 else
-    echo "Les quotas ne sont PAS activés sur /"
+    if [ "$VERBOSE" = true ]; then
+        echo "Les quotas ne sont PAS activés sur /"
+    fi     
     conf_quota
 fi
 
