@@ -153,7 +153,7 @@ add_user () {
     if [ "$VERBOSE" = true ]; then
         echo "Ajout de l'IP origine et de la clef SSH pour l'utilisateur $1"
     fi
-    
+
     # Modification de propiétaire sur le home
     chown  -R "$1:$2" "/home/$1"
     # Modification des droits sur
@@ -288,7 +288,7 @@ if [ "$VERBOSE" = true ]; then
 fi
 
 # Configuration SSH
-if ! grep -q "PasswordAuthentication " /etc/ssh/sshd_config && ! grep -q "PubkeyAuthentication yes" /etc/ssh/sshd_config; then
+if ! grep -q "PasswordAuthentication no" /etc/ssh/sshd_config && ! grep -q "PubkeyAuthentication yes" /etc/ssh/sshd_config; then
     if [ "$VERBOSE" = true ]; then
         echo "Configuration du service SSH..."
     fi
